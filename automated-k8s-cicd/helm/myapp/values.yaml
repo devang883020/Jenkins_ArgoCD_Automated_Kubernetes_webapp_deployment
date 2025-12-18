@@ -1,0 +1,17 @@
+replicaCount: 2
+
+image:
+  repository: devangkubde88/webapp
+  tag: "1.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: NodePort
+  port: 80
+
+ingress:
+  enabled: true
+  alb:
+    scheme: internet-facing
+    targetType: ip
+    path: /

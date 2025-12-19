@@ -81,31 +81,39 @@ pipeline {
     }
 
     stage('Bump Version') {
-      steps {
-        withCredentials([
-          usernamePassword(
-            credentialsId: 'github-creds',
-            usernameVariable: 'GIT_USER',
-            passwordVariable: 'GIT_PASS'
-          )
-        ]) {
-          sh '''
-          git checkout main
+  steps {
+    withCredentials([
+      usernamePassword(
+        credentialsId: 'github-creds',
+        usernameVariable: 'GIT_USER',
+        passwordVariable: 'GIT_PASS'
+      )
+    ]) {
+      sh '''
+      git checkout main
 
-          NEXT_VERSION=$(awk -F. '{print $1"."($2+1)}' VERSION)
-          echo "$NEXT_VERSION" > VERSION
+      # Make sure branch is up to date (IMPORTANT)
+      git pull --rebase origin main
 
-          git config user.name "jenkins"
-          git config user.email "jenkins@local"
+      NEXT_VERSION=$(awk -F. '{print $1"."($2+1)}' VERSION)
+      echo "$NEXT_VERSION" > VERSION
 
-          git add VERSION
-          git commit -m "Bump version to $NEXT_VERSION"
+      git config user.name "jenkins"
+      git config user.email "jenkins@local"
 
-          git push https://$GIT_USER:$GIT_PASS@github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git main
-          '''
-        }
-      }
+      git add VERSION
+      git commit -m "Bump version to $NEXT_VERSION"
+
+      # Configure git to use credentials safely
+      git config --global credential.helper store
+      printf "https://%s:%s@github.com\n" "$GIT_USER" "$GIT_PASS" > ~/.git-credentials
+
+      git push origin main
+      '''
     }
+  }
+}
+
   }
 
   post {

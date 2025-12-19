@@ -19,6 +19,7 @@ pipeline {
       steps {
         script {
           IMAGE_TAG = readFile('VERSION').trim()
+          echo "Using image tag: ${IMAGE_TAG}"
         }
       }
     }
@@ -50,69 +51,69 @@ pipeline {
       }
     }
 
-    stage('Push Image') {
+    stage('Push Image to DockerHub') {
       steps {
         sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
       }
     }
 
     stage('Configure AWS & Deploy to EKS') {
-  steps {
-    withCredentials([
-      [$class: 'AmazonWebServicesCredentialsBinding',
-       credentialsId: 'aws-creds']
-    ]) {
-      sh """
-      aws sts get-caller-identity
+      steps {
+        withCredentials([
+          [$class: 'AmazonWebServicesCredentialsBinding',
+           credentialsId: 'aws-creds']
+        ]) {
+          sh """
+          aws sts get-caller-identity
 
-      aws eks update-kubeconfig \
-        --region ${AWS_REGION} \
-        --name ${CLUSTER_NAME}
+          aws eks update-kubeconfig \
+            --region ${AWS_REGION} \
+            --name ${CLUSTER_NAME}
 
-      kubectl get nodes
+          kubectl get nodes
 
-      helm upgrade --install webapp automated-k8s-cicd/helm/myapp \
-        --set image.repository=${IMAGE_NAME} \
-        --set image.tag=${IMAGE_TAG}
-      """
+          helm upgrade --install webapp automated-k8s-cicd/helm/myapp \
+            --set image.repository=${IMAGE_NAME} \
+            --set image.tag=${IMAGE_TAG}
+          """
+        }
+      }
     }
-  }
-}
 
     stage('Bump Version') {
-  steps {
-    withCredentials([
-      usernamePassword(
-        credentialsId: 'github-creds',
-        usernameVariable: 'GIT_USER',
-        passwordVariable: 'GIT_PASS'
-      )
-    ]) {
-      sh '''
-      git checkout main
+      steps {
+        withCredentials([
+          usernamePassword(
+            credentialsId: 'github-creds',
+            usernameVariable: 'GIT_USER',
+            passwordVariable: 'GIT_PASS'
+          )
+        ]) {
+          sh '''
+          git checkout main
 
-      NEXT_VERSION=$(awk -F. '{print $1"."($2+1)}' VERSION)
-      echo "$NEXT_VERSION" > VERSION
+          NEXT_VERSION=$(awk -F. '{print $1"."($2+1)}' VERSION)
+          echo "$NEXT_VERSION" > VERSION
 
-      git config user.name "jenkins"
-      git config user.email "jenkins@local"
+          git config user.name "jenkins"
+          git config user.email "jenkins@local"
 
-      git add VERSION
-      git commit -m "Bump version to $NEXT_VERSION"
+          git add VERSION
+          git commit -m "Bump version to $NEXT_VERSION"
 
-      git push https://$GIT_USER:$GIT_PASS@github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git main
-      '''
+          git push https://$GIT_USER:$GIT_PASS@github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git main
+          '''
+        }
+      }
     }
   }
-}
-
 
   post {
     success {
-      echo "✅ Deployment Successful"
+      echo "✅ CI/CD Pipeline Completed Successfully"
     }
     failure {
-      echo "❌ Deployment Failed"
+      echo "❌ CI/CD Pipeline Failed"
     }
   }
 }

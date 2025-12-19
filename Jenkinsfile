@@ -80,23 +80,32 @@ pipeline {
 }
 
     stage('Bump Version') {
-      steps {
-        sh '''
-        git checkout main
+  steps {
+    withCredentials([
+      usernamePassword(
+        credentialsId: 'github-creds',
+        usernameVariable: 'GIT_USER',
+        passwordVariable: 'GIT_PASS'
+      )
+    ]) {
+      sh '''
+      git checkout main
 
-        NEXT_VERSION=$(awk -F. '{print $1"."($2+1)}' VERSION)
-        echo "$NEXT_VERSION" > VERSION
+      NEXT_VERSION=$(awk -F. '{print $1"."($2+1)}' VERSION)
+      echo "$NEXT_VERSION" > VERSION
 
-        git config user.name "jenkins"
-        git config user.email "jenkins@local"
+      git config user.name "jenkins"
+      git config user.email "jenkins@local"
 
-        git add VERSION
-        git commit -m "Bump version to $NEXT_VERSION"
-        git push origin main
-        '''
-      }
+      git add VERSION
+      git commit -m "Bump version to $NEXT_VERSION"
+
+      git push https://$GIT_USER:$GIT_PASS@github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git main
+      '''
     }
   }
+}
+
 
   post {
     success {

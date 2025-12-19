@@ -56,34 +56,28 @@ pipeline {
       }
     }
 
-    stage('Configure AWS & EKS') {
-      steps {
-        withCredentials([
-          [$class: 'AmazonWebServicesCredentialsBinding',
-           credentialsId: 'aws-creds']
-        ]) {
-          sh """
-          aws sts get-caller-identity
+    stage('Configure AWS & Deploy to EKS') {
+  steps {
+    withCredentials([
+      [$class: 'AmazonWebServicesCredentialsBinding',
+       credentialsId: 'aws-creds']
+    ]) {
+      sh """
+      aws sts get-caller-identity
 
-          aws eks update-kubeconfig \
-            --region ${AWS_REGION} \
-            --name ${CLUSTER_NAME}
+      aws eks update-kubeconfig \
+        --region ${AWS_REGION} \
+        --name ${CLUSTER_NAME}
 
-          kubectl get nodes
-          """
-        }
-      }
+      kubectl get nodes
+
+      helm upgrade --install webapp automated-k8s-cicd/helm/myapp \
+        --set image.repository=${IMAGE_NAME} \
+        --set image.tag=${IMAGE_TAG}
+      """
     }
-
-    stage('Deploy to EKS using Helm') {
-      steps {
-        sh """
-        helm upgrade --install webapp automated-k8s-cicd/helm/myapp \
-          --set image.repository=${IMAGE_NAME} \
-          --set image.tag=${IMAGE_TAG}
-        """
-      }
-    }
+  }
+}
 
     stage('Bump Version') {
       steps {

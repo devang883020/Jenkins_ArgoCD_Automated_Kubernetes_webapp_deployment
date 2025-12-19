@@ -82,6 +82,8 @@ pipeline {
     stage('Bump Version') {
       steps {
         sh '''
+        git checkout main
+
         NEXT_VERSION=$(awk -F. '{print $1"."($2+1)}' VERSION)
         echo "$NEXT_VERSION" > VERSION
 

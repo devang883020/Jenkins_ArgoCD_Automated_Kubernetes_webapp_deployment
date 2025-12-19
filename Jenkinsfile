@@ -32,18 +32,17 @@ pipeline {
             }
         }
 
-        stage('Login to DockerHub') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-cred',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    sh """
-                      echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
-                    """
-                }
-            }
+        stage('Build Docker Image') {
+    steps {
+        sh """
+          docker build \
+            -f automated-k8s-cicd/Dockerfile \
+            -t ${IMAGE_NAME}:${VERSION} \
+            automated-k8s-cicd
+        """
+    }
+}
+
         }
 
         stage('Push Image to DockerHub') {

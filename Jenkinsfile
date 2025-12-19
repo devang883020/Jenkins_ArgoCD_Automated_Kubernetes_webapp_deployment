@@ -2,9 +2,9 @@ pipeline {
   agent any
 
   environment {
-    AWS_REGION = "ap-south-1"
+    AWS_REGION   = "ap-south-1"
     CLUSTER_NAME = "my-eks-cluster"
-    IMAGE_NAME = "devangkubde88/webapp"
+    IMAGE_NAME   = "devangkubde88/webapp"
   }
 
   stages {
@@ -15,21 +15,22 @@ pipeline {
       }
     }
 
-    stage('Build Docker Image') {
+    stage('Read Version') {
       steps {
         script {
-          IMAGE_TAG = sh(
-            script: "cat VERSION",
-            returnStdout: true
-          ).trim()
-
-          sh """
-          docker build \
-            -t ${IMAGE_NAME}:${IMAGE_TAG} \
-            -f automated-k8s-cicd/Dockerfile \
-            automated-k8s-cicd
-          """
+          IMAGE_TAG = readFile('VERSION').trim()
         }
+      }
+    }
+
+    stage('Build Docker Image') {
+      steps {
+        sh """
+        docker build \
+          -t ${IMAGE_NAME}:${IMAGE_TAG} \
+          -f automated-k8s-cicd/Dockerfile \
+          automated-k8s-cicd
+        """
       }
     }
 
@@ -37,14 +38,14 @@ pipeline {
       steps {
         withCredentials([
           usernamePassword(
-            credentialsId: 'dockerhub-cred',
+            credentialsId: 'dockerhub-creds',
             usernameVariable: 'DOCKER_USER',
             passwordVariable: 'DOCKER_PASS'
           )
         ]) {
-          sh """
-          echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
-          """
+          sh '''
+          echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+          '''
         }
       }
     }
@@ -58,13 +59,11 @@ pipeline {
     stage('Configure AWS & EKS') {
       steps {
         withCredentials([
-          string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
-          string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+          [$class: 'AmazonWebServicesCredentialsBinding',
+           credentialsId: 'aws-creds']
         ]) {
           sh """
-          aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
-          aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
-          aws configure set region ${AWS_REGION}
+          aws sts get-caller-identity
 
           aws eks update-kubeconfig \
             --region ${AWS_REGION} \
@@ -88,25 +87,27 @@ pipeline {
 
     stage('Bump Version') {
       steps {
-        sh """
-        NEXT_VERSION=\$(awk -F. '{print \$1"."(\$2+1)}' VERSION)
-        echo \$NEXT_VERSION > VERSION
+        sh '''
+        NEXT_VERSION=$(awk -F. '{print $1"."($2+1)}' VERSION)
+        echo "$NEXT_VERSION" > VERSION
+
         git config user.name "jenkins"
         git config user.email "jenkins@local"
+
         git add VERSION
-        git commit -m "Bump version to \$NEXT_VERSION"
+        git commit -m "Bump version to $NEXT_VERSION"
         git push origin main
-        """
+        '''
       }
     }
   }
 
   post {
     success {
-      echo "✅ Deployment successful"
+      echo "✅ Deployment Successful"
     }
     failure {
-      echo "❌ Deployment failed"
+      echo "❌ Deployment Failed"
     }
   }
 }

@@ -57,7 +57,7 @@ pipeline {
       }
     }
 
-    stage('Configure AWS & Deploy to EKS') {
+    stage('Deploy to EKS using Helm') {
       steps {
         withCredentials([
           [$class: 'AmazonWebServicesCredentialsBinding',
@@ -80,40 +80,33 @@ pipeline {
       }
     }
 
-    stage('Bump Version') {
-  steps {
-    withCredentials([
-      usernamePassword(
-        credentialsId: 'github-creds',
-        usernameVariable: 'GIT_USER',
-        passwordVariable: 'GIT_PASS'
-      )
-    ]) {
-      sh '''
-      git checkout main
+    stage('Bump Version & Push to GitHub') {
+      steps {
+        withCredentials([
+          usernamePassword(
+            credentialsId: 'github-creds',
+            usernameVariable: 'GIT_USER',
+            passwordVariable: 'GIT_PASS'
+          )
+        ]) {
+          sh '''
+          git checkout main
+          git pull --rebase origin main
 
-      # Make sure branch is up to date (IMPORTANT)
-      git pull --rebase origin main
+          NEXT_VERSION=$(awk -F. '{print $1"."($2+1)}' VERSION)
+          echo "$NEXT_VERSION" > VERSION
 
-      NEXT_VERSION=$(awk -F. '{print $1"."($2+1)}' VERSION)
-      echo "$NEXT_VERSION" > VERSION
+          git config user.name "Jenkins CI"
+          git config user.email "jenkins@cicd.com"
 
-      git config user.name "jenkins"
-      git config user.email "jenkins@local"
+          git add VERSION
+          git commit -m "Bump version to $NEXT_VERSION" || echo "No changes to commit"
 
-      git add VERSION
-      git commit -m "Bump version to $NEXT_VERSION"
-
-      # Configure git to use credentials safely
-      git config --global credential.helper store
-      printf "https://%s:%s@github.com\n" "$GIT_USER" "$GIT_PASS" > ~/.git-credentials
-
-      git push origin main
-      '''
+          git push https://${GIT_USER}:${GIT_PASS}@github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git HEAD:main
+          '''
+        }
+      }
     }
-  }
-}
-
   }
 
   post {

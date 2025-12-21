@@ -7,7 +7,7 @@ app = Flask(__name__)
 @app.route("/")
 def home():
     return f"""
-    <h1>🚀 Python Flask Web App with Jenkins CICD pipeline and happy helming and also i have done the argocd integration!!!</h1>
+    <h1>🚀 Python Flask Web App with Jenkins CICD pipeline and happy helming and also i have done the argocd integration!!</h1>
     <p><b>Hostname:</b> {socket.gethostname()}</p>
     <p><b>Time:</b> {datetime.datetime.now()}</p>
     <p>Status: Running successfully</p>
@@ -24,9 +24,9 @@ def health():
 @app.route("/api/info")
 def info():
     return jsonify(
-        app="Flask Docker Web App",
-        version="1.0",
-        author="Devang"
+        app="Flask Docker Web App for everyone!!",
+        version="1.1",
+        author="Devang kubde"
     )
 
 if __name__ == "__main__":

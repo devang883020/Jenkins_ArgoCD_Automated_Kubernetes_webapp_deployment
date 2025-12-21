@@ -49,7 +49,7 @@ pipeline {
 }
 
         stage('Build Docker Image') {
-            when {
+            
                 when {
     expression { env.CODE_CHANGED == "true" }
 }
@@ -64,7 +64,7 @@ pipeline {
         }
 
         stage('Login to DockerHub') {
-            when {
+            
                 when {
     expression { env.CODE_CHANGED == "true" }
 }
@@ -82,7 +82,7 @@ pipeline {
         }
 
         stage('Push Docker Image') {
-            when {
+         
                 when {
     expression { env.CODE_CHANGED == "true" }
 }

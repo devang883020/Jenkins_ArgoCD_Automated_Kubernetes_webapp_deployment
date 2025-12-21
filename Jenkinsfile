@@ -24,7 +24,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 sh '''
-                  docker build -t ${IMAGE_REPO}:${BUILD_NUMBER} .
+                  docker build -t ${IMAGE_REPO}:${BUILD_NUMBER} automated-k8s-cicd/
                 '''
             }
         }

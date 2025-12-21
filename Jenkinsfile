@@ -30,21 +30,30 @@ pipeline {
         }
 
         stage('Check if App Code Changed') {
-            steps {
-                script {
-                    CODE_CHANGED = sh(
-                        script: "git diff --name-only HEAD~1 HEAD | grep -E '^main.py' || true",
-                        returnStdout: true
-                    ).trim()
+    steps {
+        script {
+            def changed = sh(
+                script: "git diff --name-only HEAD~1 HEAD | grep -E '^main.py' || true",
+                returnStdout: true
+            ).trim()
 
-                    echo "Code changed: ${CODE_CHANGED}"
-                }
+            if (changed) {
+                env.CODE_CHANGED = "true"
+            } else {
+                env.CODE_CHANGED = "false"
             }
+
+            echo "Code changed: ${env.CODE_CHANGED}"
         }
+    }
+}
 
         stage('Build Docker Image') {
             when {
-                expression { CODE_CHANGED != "" }
+                when {
+    expression { env.CODE_CHANGED == "true" }
+}
+
             }
             steps {
                 sh """
@@ -56,7 +65,10 @@ pipeline {
 
         stage('Login to DockerHub') {
             when {
-                expression { CODE_CHANGED != "" }
+                when {
+    expression { env.CODE_CHANGED == "true" }
+}
+
             }
             steps {
                 withCredentials([usernamePassword(
@@ -71,7 +83,10 @@ pipeline {
 
         stage('Push Docker Image') {
             when {
-                expression { CODE_CHANGED != "" }
+                when {
+    expression { env.CODE_CHANGED == "true" }
+}
+
             }
             steps {
                 sh "docker push ${IMAGE_NAME}:${BUILD_NUMBER}"

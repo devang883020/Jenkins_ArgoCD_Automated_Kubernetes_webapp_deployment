@@ -4,7 +4,7 @@ pipeline {
     environment {
         IMAGE_NAME = "devangkubde88/webapp"
         IMAGE_TAG  = "${BUILD_NUMBER}"
-        COMMIT_MSG = ""
+        
     }
 
     stages {
@@ -23,14 +23,14 @@ pipeline {
                         returnStdout: true
                     ).trim()
 
-                    echo "Commit message detected: ${env.COMMIT_MSG}"
+                    echo "Commit message detected: ${COMMIT_MSG}"
                 }
             }
         }
 
         stage('Build Docker Image') {
             when {
-                expression { !env.COMMIT_MSG.startsWith("ci:") }
+                expression { !COMMIT_MSG.startsWith("ci:") }
             }
             steps {
                 steps {

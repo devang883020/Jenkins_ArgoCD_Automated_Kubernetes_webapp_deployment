@@ -76,16 +76,7 @@ pipeline {
             }
         }
 
-        stage('Deploy to EKS using Helm') {
-            steps {
-                sh '''
-                helm upgrade --install webapp automated-k8s-cicd/helm/myapp \
-                --set image.repository=${IMAGE_NAME} \
-                --set image.tag=${BUILD_NUMBER}
-                '''
-            }
-        }
-
+        
         /* ===================== MODIFIED (ONLY WHEN) ===================== */
         stage('Update Helm values.yaml (GitOps)') {
             when {

@@ -95,7 +95,7 @@ pipeline {
         stage('Push Git Changes') {
             when {
                 expression {
-                    !env.COMMIT_MSG.startsWith("ci:")
+                    env.COMMIT_MSG == null || !env.COMMIT_MSG.startsWith("ci:")
                 }
             }
             steps {

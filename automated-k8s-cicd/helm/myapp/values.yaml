@@ -1,14 +1,11 @@
 replicaCount: 2
-
 image:
   repository: devangkubde88/webapp
-  tag: 1.16
+  tag: "38"
   pullPolicy: IfNotPresent
-
 service:
   type: NodePort
   port: 80
-
 ingress:
   enabled: true
   alb:

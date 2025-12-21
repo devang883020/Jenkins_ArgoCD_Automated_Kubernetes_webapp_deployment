@@ -25,8 +25,8 @@ def health():
 def info():
     return jsonify(
         app="Flask Docker Web App for everyone!!",
-        version="1.1",
-        author="Devang kubde"
+        version="1.2",
+        author="Devang"
     )
 
 if __name__ == "__main__":

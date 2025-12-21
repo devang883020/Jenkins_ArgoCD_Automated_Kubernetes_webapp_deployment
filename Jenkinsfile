@@ -23,7 +23,7 @@ pipeline {
                         returnStdout: true
                     ).trim()
 
-                    echo "Commit message: ${env.COMMIT_MSG}"
+                    echo "Commit message detected: ${env.COMMIT_MSG}"
                 }
             }
         }
@@ -33,7 +33,7 @@ pipeline {
                 expression { !env.COMMIT_MSG.startsWith("ci:") }
             }
             steps {
-                dir('automatedk8s') {
+                steps {
                     sh """
                       docker build -t ${IMAGE_NAME}:${IMAGE_TAG} \
                         -f ../automated-k8s-cicd/Dockerfile \
@@ -76,7 +76,7 @@ pipeline {
             steps {
                 sh """
                   sed -i 's|repository:.*|repository: ${IMAGE_NAME}|' automated-k8s-cicd/helm/myapp/values.yaml
-                  sed -i 's|tag:.*|tag: "${IMAGE_TAG}"|' automated-k8s-cicd/helm/myapp/values.yaml
+                  sed -i 's|tag:.*|tag: \"${IMAGE_TAG}\"|' automated-k8s-cicd/helm/myapp/values.yaml
                 """
             }
         }
@@ -108,7 +108,7 @@ pipeline {
 
     post {
         success {
-            echo "✅ CI completed. ArgoCD will auto-sync."
+            echo "✅ CI finished. ArgoCD will reconcile the cluster."
         }
         failure {
             echo "❌ CI failed."

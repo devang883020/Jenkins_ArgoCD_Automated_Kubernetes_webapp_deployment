@@ -54,7 +54,7 @@ pipeline {
     expression { env.CODE_CHANGED == "true" }
 }
 
-            }
+            
             steps {
                 sh """
                   docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} \
@@ -69,7 +69,7 @@ pipeline {
     expression { env.CODE_CHANGED == "true" }
 }
 
-            }
+            
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: dockerhub-cred,
@@ -87,7 +87,7 @@ pipeline {
     expression { env.CODE_CHANGED == "true" }
 }
 
-            }
+            
             steps {
                 sh "docker push ${IMAGE_NAME}:${BUILD_NUMBER}"
             }

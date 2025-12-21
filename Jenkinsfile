@@ -1,119 +1,93 @@
 pipeline {
-
     agent any
 
     environment {
-        IMAGE_NAME = "devangkubde88/webapp"
-        AWS_REGION = "ap-south-1"
-        CLUSTER_NAME = "my-eks-cluster"
-        GIT_CREDENTIALS_ID = "github-creds"
-        COMMIT_MSG = ""
+        IMAGE_NAME   = "devangkubde88/webapp"
+        IMAGE_TAG    = "${BUILD_NUMBER}"
+        IMAGE_BUILT  = "false"
     }
 
     stages {
 
-        /* ===================== ADDED (REQUIRED) ===================== */
         stage('Checkout') {
             steps {
                 checkout scm
-                sh 'git fetch --unshallow || true'
             }
         }
-
-        stage('Read Commit Message') {
-            steps {
-                script {
-                    env.COMMIT_MSG = sh(
-                        script: "git log -1 --pretty=%B",
-                        returnStdout: true
-                    ).trim()
-                    echo "Commit Message: ${env.COMMIT_MSG}"
-                }
-            }
-        }
-        /* ============================================================= */
 
         stage('Build Docker Image') {
             steps {
-                sh '''
-                docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} automated-k8s-cicd/
-                '''
+                dir('automatedk8s') {
+                    sh """
+                      docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                    """
+                }
+                script {
+                    env.IMAGE_BUILT = "true"
+                }
             }
         }
 
         stage('Login to DockerHub') {
+            when {
+                expression { env.IMAGE_BUILT == "true" }
+            }
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-cred',
+                    credentialsId: 'dockerhub-creds',
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                    sh """
+                      echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
+                    """
                 }
             }
         }
 
         stage('Push Docker Image') {
+            when {
+                expression { env.IMAGE_BUILT == "true" }
+            }
             steps {
-                sh '''
-                docker push ${IMAGE_NAME}:${BUILD_NUMBER}
-                '''
+                sh """
+                  docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                """
             }
         }
 
-        stage('Configure AWS & EKS') {
-            steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: 'aws-creds'
-                ]]) {
-                    sh '''
-                    aws sts get-caller-identity
-                    aws eks update-kubeconfig --region ${AWS_REGION} --name ${CLUSTER_NAME}
-                    kubectl get nodes
-                    '''
-                }
-            }
-        }
-
-        
-        /* ===================== MODIFIED (ONLY WHEN) ===================== */
         stage('Update Helm values.yaml (GitOps)') {
             when {
-                expression {
-                    !env.COMMIT_MSG.startsWith("ci:")
-                }
+                expression { env.IMAGE_BUILT == "true" }
             }
             steps {
-                sh '''
-                sed -i "s|tag:.*|tag: ${BUILD_NUMBER}|" automated-k8s-cicd/helm/myapp/values.yaml
-                '''
+                sh """
+                  sed -i 's|repository:.*|repository: ${IMAGE_NAME}|' automated-k8s-cicd/helm/myapp/values.yaml
+                  sed -i 's|tag:.*|tag: "${IMAGE_TAG}"|' automated-k8s-cicd/helm/myapp/values.yaml
+                """
             }
         }
-        /* ================================================================ */
 
-        stage('Push Git Changes') {
+        stage('Commit & Push GitOps Change') {
             when {
-                expression {
-                    env.COMMIT_MSG == null || !env.COMMIT_MSG.startsWith("ci:")
-                }
+                expression { env.IMAGE_BUILT == "true" }
             }
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: "${GIT_CREDENTIALS_ID}",
+                    credentialsId: 'github-creds',
                     usernameVariable: 'GIT_USER',
                     passwordVariable: 'GIT_PASS'
                 )]) {
-                    sh '''
-                    git config user.name "jenkins"
-                    git config user.email "jenkins@ci.local"
+                    sh """
+                      git config user.name "jenkins"
+                      git config user.email "jenkins@ci.local"
 
-                    git add automated-k8s-cicd/helm/myapp/values.yaml
-                    git commit -m "ci: update image tag to ${BUILD_NUMBER}" || echo "No changes"
+                      git add automated-k8s-cicd/helm/myapp/values.yaml
+                      git commit -m "ci: update image tag to ${IMAGE_TAG}" || echo "No changes to commit"
 
-                    git pull --rebase https://${GIT_USER}:${GIT_PASS}@github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git main
-                    git push https://${GIT_USER}:${GIT_PASS}@github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git main
-                    '''
+                      git pull --rebase https://${GIT_USER}:${GIT_PASS}@github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git main
+                      git push https://${GIT_USER}:${GIT_PASS}@github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git main
+                    """
                 }
             }
         }

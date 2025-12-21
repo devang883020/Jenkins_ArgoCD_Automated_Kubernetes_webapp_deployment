@@ -19,7 +19,7 @@ pipeline {
             steps {
                 dir('automatedk8s') {
                     sh """
-                      docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                      docker build -t ${IMAGE_NAME}:${IMAGE_TAG} automated-k8s-cicd/
                     """
                 }
                 script {

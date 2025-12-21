@@ -2,124 +2,85 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "devangkubde88/webapp"
-        GIT_BRANCH = "main"
-        VALUES_FILE = "automated-k8s-cicd/helm/myapp/values.yaml"
+        AWS_REGION      = "ap-south-1"
+        EKS_CLUSTER     = "my-eks-cluster"
+        IMAGE_REPO      = "devangkubde88/webapp"
+        GIT_REPO_URL    = "https://github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git"
+        HELM_VALUES     = "automated-k8s-cicd/helm/myapp/values.yaml"
+    }
+
+    options {
+        disableConcurrentBuilds()
     }
 
     stages {
 
-        stage('Checkout Code') {
+        stage('Checkout Source') {
             steps {
                 checkout scm
             }
         }
 
-        stage('Read Version') {
-            steps {
-                script {
-                    VERSION = sh(
-                        script: "cat VERSION",
-                        returnStdout: true
-                    ).trim()
-                    echo "Current version: ${VERSION}"
-                }
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
-                sh """
-                docker build -t ${IMAGE_NAME}:${VERSION} automated-k8s-cicd
-                """
+                sh '''
+                  docker build -t ${IMAGE_REPO}:${BUILD_NUMBER} .
+                '''
             }
         }
 
-        stage('Login to DockerHub') {
+        stage('Push Docker Image') {
             steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'dockerhub-cred',
-                        usernameVariable: 'DOCKER_USER',
-                        passwordVariable: 'DOCKER_PASS'
-                    )
-                ]) {
-                    sh """
-                    echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
-                    """
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-cred',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh '''
+                      echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                      docker push ${IMAGE_REPO}:${BUILD_NUMBER}
+                    '''
                 }
             }
         }
 
-        stage('Push Image to DockerHub') {
-            steps {
-                sh """
-                docker push ${IMAGE_NAME}:${VERSION}
-                """
-            }
-        }
-
-        stage('Update Helm values.yaml') {
-    steps {
-        withCredentials([
-            usernamePassword(
-                credentialsId: 'github-creds',
-                usernameVariable: 'GIT_USER',
-                passwordVariable: 'GIT_PASS'
-            )
-        ]) {
-            sh '''
-            git config user.name "jenkins"
-            git config user.email "jenkins@ci.local"
-
-            # Ensure we are on main
-            git checkout main
-
-            # Always sync with remote before changing
-            git pull --rebase origin main
-
-            # Update image tag
-            sed -i "s/tag:.*/tag: ${VERSION}/" automated-k8s-cicd/helm/myapp/values.yaml
-
-            git add automated-k8s-cicd/helm/myapp/values.yaml
-            git commit -m "ci: update image tag to ${VERSION}" || echo "No changes to commit"
-
-            git push https://${GIT_USER}:${GIT_PASS}@github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git main
-            '''
-        }
-    }
-}
-
-
-        stage('Bump Version') {
-            steps {
-                script {
-                    NEXT_VERSION = sh(
-                        script: "awk -F. '{print \$1\".\"(\$2+1)}' VERSION",
-                        returnStdout: true
-                    ).trim()
-
-                    sh """
-                    echo ${NEXT_VERSION} > VERSION
-                    git add VERSION
-                    git commit -m "ci: bump version to ${NEXT_VERSION}"
-                    """
+        stage('Update Helm values.yaml (GitOps)') {
+            when {
+                not {
+                    changelog 'ci: update image tag*'
                 }
             }
+            steps {
+                sh '''
+                  git config user.name "jenkins"
+                  git config user.email "jenkins@ci.local"
+
+                  # Update image tag safely using yq
+                  yq e -i '.image.repository = "'${IMAGE_REPO}'"' ${HELM_VALUES}
+                  yq e -i '.image.tag = "'${BUILD_NUMBER}'"' ${HELM_VALUES}
+
+                  git add ${HELM_VALUES}
+                  git commit -m "ci: update image tag to ${BUILD_NUMBER}" || echo "No changes to commit"
+                '''
+            }
         }
 
-        stage('Push Version Bump') {
+        stage('Push Git Changes') {
+            when {
+                not {
+                    changelog 'ci: update image tag*'
+                }
+            }
             steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'github-creds',
-                        usernameVariable: 'GIT_USER',
-                        passwordVariable: 'GIT_PASS'
-                    )
-                ]) {
-                    sh """
-                    git push https://${GIT_USER}:${GIT_PASS}@github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git ${GIT_BRANCH}
-                    """
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-creds',
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_PASS'
+                )]) {
+                    sh '''
+                      git pull --rebase ${GIT_REPO_URL} main
+                      git push https://${GIT_USER}:${GIT_PASS}@github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git main
+                    '''
                 }
             }
         }
@@ -127,7 +88,7 @@ pipeline {
 
     post {
         success {
-            echo "✅ CI completed successfully. Argo CD will deploy automatically."
+            echo "✅ CI completed. ArgoCD will auto-sync the deployment."
         }
         failure {
             echo "❌ CI failed."

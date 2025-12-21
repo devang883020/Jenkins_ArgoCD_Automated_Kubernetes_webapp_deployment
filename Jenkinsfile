@@ -2,56 +2,36 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION   = "ap-south-1"
-        CLUSTER_NAME = "my-eks-cluster"
-        IMAGE_NAME   = "devangkubde88/webapp"
-    }
-
-    options {
-        skipDefaultCheckout(true)
+        IMAGE_NAME = "devangkubde88/webapp"
+        GIT_BRANCH = "main"
+        VALUES_FILE = "automated-k8s-cicd/helm/myapp/values.yaml"
     }
 
     stages {
 
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
                 checkout scm
             }
         }
 
-        /* =======================
-           🔒 PREVENT INFINITE LOOP
-           ======================= */
-        stage('Prevent CI Loop') {
-            when {
-                expression {
-                    sh(
-                        script: "git log -1 --pretty=%B | grep -i '\\[ci skip\\]'",
-                        returnStatus: true
-                    ) == 0
-                }
-            }
+        stage('Read Version') {
             steps {
-                echo "🛑 CI-generated commit detected. Skipping pipeline."
                 script {
-                    currentBuild.result = 'SUCCESS'
+                    VERSION = sh(
+                        script: "cat VERSION",
+                        returnStdout: true
+                    ).trim()
+                    echo "Current version: ${VERSION}"
                 }
-                error("Stopping pipeline to prevent infinite loop")
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    IMAGE_TAG = sh(
-                        script: "cat VERSION",
-                        returnStdout: true
-                    ).trim()
-
-                    sh """
-                    docker build -t ${IMAGE_NAME}:${IMAGE_TAG} automated-k8s-cicd/
-                    """
-                }
+                sh """
+                docker build -t ${IMAGE_NAME}:${VERSION} automated-k8s-cicd
+                """
             }
         }
 
@@ -65,7 +45,7 @@ pipeline {
                     )
                 ]) {
                     sh """
-                    echo "${DOCKER_PASS}" | docker login -u ${DOCKER_USER} --password-stdin
+                    echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
                     """
                 }
             }
@@ -74,32 +54,12 @@ pipeline {
         stage('Push Image to DockerHub') {
             steps {
                 sh """
-                docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                docker push ${IMAGE_NAME}:${VERSION}
                 """
             }
         }
 
-       stage('Deploy to EKS using Helm') {
-    steps {
-        withCredentials([
-            [
-                $class: 'AmazonWebServicesCredentialsBinding',
-                credentialsId: 'aws-creds'
-            ]
-        ]) {
-            sh """
-            aws eks update-kubeconfig --region ${AWS_REGION} --name ${CLUSTER_NAME}
-
-            helm upgrade --install webapp automated-k8s-cicd/helm/myapp \
-              --set image.repository=${IMAGE_NAME} \
-              --set image.tag=${IMAGE_TAG}
-            """
-        }
-    }
-}
-
-
-        stage('Bump Version') {
+        stage('Update Helm values.yaml') {
             steps {
                 withCredentials([
                     usernamePassword(
@@ -109,19 +69,48 @@ pipeline {
                     )
                 ]) {
                     sh """
-                    git checkout main
-                    git pull --rebase origin main
+                    git config user.name "jenkins"
+                    git config user.email "jenkins@ci.local"
 
-                    NEXT_VERSION=\$(awk -F. '{print \$1"."(\$2+1)}' VERSION)
-                    echo \$NEXT_VERSION > VERSION
+                    sed -i "s/tag:.*/tag: ${VERSION}/" ${VALUES_FILE}
 
-                    git config user.name "Jenkins CI"
-                    git config user.email "jenkins@cicd.com"
+                    git add ${VALUES_FILE}
+                    git commit -m "ci: update image tag to ${VERSION}" || echo "No changes"
 
+                    git push https://${GIT_USER}:${GIT_PASS}@github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git ${GIT_BRANCH}
+                    """
+                }
+            }
+        }
+
+        stage('Bump Version') {
+            steps {
+                script {
+                    NEXT_VERSION = sh(
+                        script: "awk -F. '{print \$1\".\"(\$2+1)}' VERSION",
+                        returnStdout: true
+                    ).trim()
+
+                    sh """
+                    echo ${NEXT_VERSION} > VERSION
                     git add VERSION
-                    git commit -m "Bump version to \$NEXT_VERSION [ci skip]" || echo "No changes"
+                    git commit -m "ci: bump version to ${NEXT_VERSION}"
+                    """
+                }
+            }
+        }
 
-                    git push https://${GIT_USER}:${GIT_PASS}@github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git HEAD:main
+        stage('Push Version Bump') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'github-creds',
+                        usernameVariable: 'GIT_USER',
+                        passwordVariable: 'GIT_PASS'
+                    )
+                ]) {
+                    sh """
+                    git push https://${GIT_USER}:${GIT_PASS}@github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git ${GIT_BRANCH}
                     """
                 }
             }
@@ -130,10 +119,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ CI/CD Pipeline Completed Successfully"
+            echo "✅ CI completed successfully. Argo CD will deploy automatically."
         }
         failure {
-            echo "❌ CI/CD Pipeline Failed"
+            echo "❌ CI failed."
         }
     }
 }

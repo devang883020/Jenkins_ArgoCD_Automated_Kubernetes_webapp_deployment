@@ -60,28 +60,36 @@ pipeline {
         }
 
         stage('Update Helm values.yaml') {
-            steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'github-creds',
-                        usernameVariable: 'GIT_USER',
-                        passwordVariable: 'GIT_PASS'
-                    )
-                ]) {
-                    sh """
-                    git config user.name "jenkins"
-                    git config user.email "jenkins@ci.local"
+    steps {
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'github-creds',
+                usernameVariable: 'GIT_USER',
+                passwordVariable: 'GIT_PASS'
+            )
+        ]) {
+            sh '''
+            git config user.name "jenkins"
+            git config user.email "jenkins@ci.local"
 
-                    sed -i "s/tag:.*/tag: ${VERSION}/" ${VALUES_FILE}
+            # Ensure we are on main
+            git checkout main
 
-                    git add ${VALUES_FILE}
-                    git commit -m "ci: update image tag to ${VERSION}" || echo "No changes"
+            # Always sync with remote before changing
+            git pull --rebase origin main
 
-                    git push https://${GIT_USER}:${GIT_PASS}@github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git ${GIT_BRANCH}
-                    """
-                }
-            }
+            # Update image tag
+            sed -i "s/tag:.*/tag: ${VERSION}/" automated-k8s-cicd/helm/myapp/values.yaml
+
+            git add automated-k8s-cicd/helm/myapp/values.yaml
+            git commit -m "ci: update image tag to ${VERSION}" || echo "No changes to commit"
+
+            git push https://${GIT_USER}:${GIT_PASS}@github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git main
+            '''
         }
+    }
+}
+
 
         stage('Bump Version') {
             steps {

@@ -53,14 +53,22 @@ pipeline {
             steps {
                 sh '''
                   git config user.name "jenkins"
-                  git config user.email "jenkins@ci.local"
+git config user.email "jenkins@ci.local"
 
-                  # Update image tag safely using yq
-                  yq e -i '.image.repository = "'${IMAGE_REPO}'"' ${HELM_VALUES}
-                  yq e -i '.image.tag = "'${BUILD_NUMBER}'"' ${HELM_VALUES}
+# 🔑 CRITICAL FIX
+git checkout main
 
-                  git add ${HELM_VALUES}
-                  git commit -m "ci: update image tag to ${BUILD_NUMBER}" || echo "No changes to commit"
+# Always sync first
+git pull --rebase origin main
+
+# Update values.yaml using yq (Option A)
+yq e -i '.image.repository = "devangkubde88/webapp"' automated-k8s-cicd/helm/myapp/values.yaml
+yq e -i '.image.tag = "'"${BUILD_NUMBER}"'"' automated-k8s-cicd/helm/myapp/values.yaml
+
+git add automated-k8s-cicd/helm/myapp/values.yaml
+git commit -m "ci: update image tag to ${BUILD_NUMBER}" || echo "No changes"
+
+git push origin main
                 '''
             }
         }

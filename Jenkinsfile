@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME   = "devangkubde88/webapp"
-        IMAGE_TAG    = "${BUILD_NUMBER}"
-        IMAGE_BUILT  = "false"
+        IMAGE_NAME = "devangkubde88/webapp"
+        IMAGE_TAG  = "${BUILD_NUMBER}"
+        COMMIT_MSG = ""
     }
 
     stages {
@@ -15,25 +15,41 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
-      steps {
-        sh """
-        docker build \
-          -t ${IMAGE_NAME}:${IMAGE_TAG} \
-          -f automated-k8s-cicd/Dockerfile \
-          automated-k8s-cicd
-        """
-      }
-    }
+        stage('Read Commit Message') {
+            steps {
+                script {
+                    env.COMMIT_MSG = sh(
+                        script: "git log -1 --pretty=%B",
+                        returnStdout: true
+                    ).trim()
 
+                    echo "Commit message: ${env.COMMIT_MSG}"
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            when {
+                expression { !env.COMMIT_MSG.startsWith("ci:") }
+            }
+            steps {
+                dir('automatedk8s') {
+                    sh """
+                      docker build -t ${IMAGE_NAME}:${IMAGE_TAG} \
+                        -f ../automated-k8s-cicd/Dockerfile \
+                        ../automated-k8s-cicd
+                    """
+                }
+            }
+        }
 
         stage('Login to DockerHub') {
             when {
-                expression { env.IMAGE_BUILT == "true" }
+                expression { !env.COMMIT_MSG.startsWith("ci:") }
             }
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-creds',
+                    credentialsId: 'dockerhub-cred',
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
@@ -46,18 +62,16 @@ pipeline {
 
         stage('Push Docker Image') {
             when {
-                expression { env.IMAGE_BUILT == "true" }
+                expression { !env.COMMIT_MSG.startsWith("ci:") }
             }
             steps {
-                sh """
-                  docker push ${IMAGE_NAME}:${IMAGE_TAG}
-                """
+                sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
             }
         }
 
         stage('Update Helm values.yaml (GitOps)') {
             when {
-                expression { env.IMAGE_BUILT == "true" }
+                expression { !env.COMMIT_MSG.startsWith("ci:") }
             }
             steps {
                 sh """
@@ -69,7 +83,7 @@ pipeline {
 
         stage('Commit & Push GitOps Change') {
             when {
-                expression { env.IMAGE_BUILT == "true" }
+                expression { !env.COMMIT_MSG.startsWith("ci:") }
             }
             steps {
                 withCredentials([usernamePassword(
@@ -94,7 +108,7 @@ pipeline {
 
     post {
         success {
-            echo "✅ CI completed. ArgoCD will auto-sync the deployment."
+            echo "✅ CI completed. ArgoCD will auto-sync."
         }
         failure {
             echo "❌ CI failed."

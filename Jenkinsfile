@@ -16,20 +16,16 @@ pipeline {
         }
 
         stage('Build Docker Image') {
-            steps {
-                 {
-                    sh """
-                      docker build \
+      steps {
+        sh """
+        docker build \
           -t ${IMAGE_NAME}:${IMAGE_TAG} \
           -f automated-k8s-cicd/Dockerfile \
           automated-k8s-cicd
-                    """
-                }
-                script {
-                    env.IMAGE_BUILT = "true"
-                }
-            }
-        }
+        """
+      }
+    }
+
 
         stage('Login to DockerHub') {
             when {

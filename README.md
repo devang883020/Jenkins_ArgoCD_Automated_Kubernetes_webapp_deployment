@@ -135,6 +135,7 @@ eksctl create cluster \
 
 # Configure kubectl
 aws eks update-kubeconfig --name my-cluster --region us-east-1
+
 Step 4: Install ArgoCD
 bash# Create namespace
 kubectl create namespace argocd
@@ -147,6 +148,7 @@ kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "LoadBalancer"}}
 
 # Get initial admin password
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+
 Step 5: Configure ArgoCD Application
 
 Login to ArgoCD UI
@@ -162,6 +164,7 @@ Namespace: default
 
 
 
+
 Step 6: Install AWS ALB Ingress Controller
 bash# Add Helm repo
 helm repo add eks https://aws.github.io/eks-charts
@@ -172,6 +175,7 @@ helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
   --set clusterName=my-cluster \
   --set serviceAccount.create=true \
   --set serviceAccount.name=aws-load-balancer-controller
+  
 Step 7: Test the Pipeline
 bash# Make a change to main.py
 echo "# Test change" >> automated-k8s-cicd/app/main.py

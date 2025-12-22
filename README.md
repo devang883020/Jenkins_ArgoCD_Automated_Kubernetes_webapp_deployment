@@ -28,9 +28,13 @@ Traditional deployment workflows are:
 This automation provides:
 
 ✅ Speed: From code push to production in minutes
+
 ✅ Reliability: Consistent, repeatable deployments
+
 ✅ Traceability: Git history shows all changes
+
 ✅ Rollback: Easy to revert to previous versions
+
 
 
 
@@ -68,12 +72,19 @@ Before you begin, ensure you have:
 Required Tools:
 
 ✅ AWS Account with EKS cluster access
+
 ✅ Jenkins server (2.400+) installed and running
+
 ✅ kubectl configured to access your cluster
+
 ✅ Helm 3.x installed
+
 ✅ ArgoCD installed on Kubernetes cluster
+
 ✅ DockerHub account
+
 ✅ GitHub account
+
 
 Required Knowledge:
 

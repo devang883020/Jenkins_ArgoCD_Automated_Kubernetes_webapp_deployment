@@ -4,8 +4,7 @@ pipeline {
     environment {
         IMAGE_NAME = "devangkubde88/webapp"
         GITOPS_PATH = "automated-k8s-cicd/helm/myapp/values.yaml"
-        DOCKER_CREDS = "dockerhub-cred"
-        GIT_CREDS = "github-creds"
+        
     }
 
     stages {

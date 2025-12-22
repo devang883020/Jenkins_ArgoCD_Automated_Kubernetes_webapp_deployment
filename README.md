@@ -1,18 +1,3 @@
-📋 Table of Contents
-
-Overview
-Architecture
-Features
-Technology Stack
-Prerequisites
-Project Structure
-Setup Guide
-How It Works
-Pipeline Logic
-Troubleshooting
-Future Enhancements
-Contributing
-License
 
 
 # 🎯 Overview 

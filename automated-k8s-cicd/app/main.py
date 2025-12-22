@@ -69,7 +69,7 @@ def home():
         </div>
 
         <footer>
-            Built by Devang Kubde | DevOps | Kubernetes | Cloud
+            Built by Devang kubde | DevOps | Kubernetes | Cloud
         </footer>
     </body>
     </html>

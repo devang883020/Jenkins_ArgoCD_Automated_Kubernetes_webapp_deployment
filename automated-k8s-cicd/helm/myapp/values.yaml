@@ -1,7 +1,7 @@
 replicaCount: 2
 image:
   repository: devangkubde88/webapp
-  tag: "38"
+  tag: 73
   pullPolicy: IfNotPresent
 service:
   type: NodePort

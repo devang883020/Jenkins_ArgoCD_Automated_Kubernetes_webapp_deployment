@@ -6,8 +6,8 @@ import platform
 
 app = Flask(__name__)
 
-APP_NAME = os.getenv("APP_NAME", "Python Flask DevOps WebApp by devang Kubde")
-APP_VERSION = os.getenv("APP_VERSION", "1.0.3")
+APP_NAME = os.getenv("APP_NAME", "Python Flask DevOps WebApp by devang")
+APP_VERSION = os.getenv("APP_VERSION", "1.0.4")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "Development")
 
 @app.route("/")

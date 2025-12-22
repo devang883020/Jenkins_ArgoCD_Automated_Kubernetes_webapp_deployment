@@ -84,21 +84,7 @@ pipeline {
             }
         }
 
-        stage('Update Helm values.yaml (GitOps)') {
-            when {
-                expression {
-                    env.CODE_CHANGED == "true" &&
-                    !env.COMMIT_MSG.startsWith("ci:")
-                }
-            }
-            steps {
-                sh """
-                  sed -i 's|tag:.*|tag: ${BUILD_NUMBER}|' ${GITOPS_PATH}
-                """
-            }
-        }
-
-        stage('Commit & Push GitOps Change') {
+        stage('Update Helm values.yaml & Push (GitOps)') {
             when {
                 expression {
                     env.CODE_CHANGED == "true" &&
@@ -116,15 +102,18 @@ pipeline {
                       git config user.name "jenkins"
                       git config user.email "jenkins@ci.local"
 
-                      # Ensure we're on the main branch
-                      git checkout main || git checkout -b main
+                      # Ensure we're on the main branch (not detached HEAD)
+                      git checkout main
 
-                      # Pull latest changes
-                      git pull https://${GIT_USER}:${GIT_PASS}@github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git main --rebase
+                      # Pull latest changes from remote
+                      git pull https://${GIT_USER}:${GIT_PASS}@github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git main
+
+                      # Now update the values.yaml file
+                      sed -i "s|tag:.*|tag: ${BUILD_NUMBER}|" ${GITOPS_PATH}
 
                       # Stage and commit the changes
                       git add ${GITOPS_PATH}
-                      git commit -m "ci: update image tag to ${BUILD_NUMBER}" || echo "No changes to commit"
+                      git commit -m "ci: update image tag to ${BUILD_NUMBER}"
 
                       # Push to remote
                       git push https://${GIT_USER}:${GIT_PASS}@github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git main

@@ -139,30 +139,6 @@ Basic Kubernetes concepts
 Jenkins pipeline basics
 
 
-📁 Project Structure
-Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment/
-│
-├── Jenkinsfile                      # Jenkins pipeline definition
-├── VERSION                          # Application version tracking
-├── README.md                        # This file
-│
-└── automated-k8s-cicd/
-    │
-    ├── Dockerfile                   # Docker image definition
-    ├── requirements.txt             # Python dependencies
-    │
-    ├── app/
-    │   ├── main.py                 # Flask application
-    │   └── __init__.py             # Python package init
-    │
-    └── helm/
-        └── myapp/
-            ├── Chart.yaml          # Helm chart metadata
-            ├── values.yaml         # Configuration values
-            └── templates/
-                ├── deployment.yaml # Kubernetes deployment
-                ├── service.yaml    # Kubernetes service
-                └── ingress.yaml    # AWS ALB ingress
 
 🚀 Setup Guide
 Step 1: Clone the Repository

@@ -15,7 +15,7 @@ Contributing
 License
 
 
-🎯 Overview
+# 🎯 Overview 
 This project demonstrates a complete end-to-end CI/CD workflow using industry-standard DevOps practices and tools. It automates the entire software delivery pipeline from code commit to production deployment on Kubernetes.
 What Problem Does This Solve?
 Traditional deployment workflows are:
@@ -34,7 +34,7 @@ This automation provides:
 
 
 
-✨ Features
+# ✨ Features
 CI Pipeline (Jenkins)
 
 🔍 Smart Change Detection: Only builds when application code changes
@@ -63,7 +63,7 @@ Application
 🛠️ Technology Stack
 ComponentTechnologyPurposeSource ControlGitHubCode repository and webhook triggerCI ServerJenkinsContinuous Integration automationCD ToolArgoCDGitOps-based Continuous DeploymentContainer RuntimeDockerApplication containerizationContainer RegistryDockerHubImage storage and distributionOrchestrationKubernetes (EKS)Container orchestration and managementPackage ManagerHelmKubernetes application packagingCloud ProviderAWSInfrastructure hosting (EKS, ALB)ApplicationFlask (Python)Web application frameworkIngressAWS ALBLoad balancing and external access
 
-📦 Prerequisites
+# 📦 Prerequisites
 Before you begin, ensure you have:
 Required Tools:
 
@@ -84,11 +84,11 @@ Jenkins pipeline basics
 
 
 
-🚀 Setup Guide
-Step 1: Clone the Repository
+# 🚀 Setup Guide
+# Step 1: Clone the Repository
 bashgit clone https://github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git
 cd Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment
-Step 2: Configure Jenkins
+# Step 2: Configure Jenkins
 
 Install Required Plugins:
 
@@ -124,7 +124,7 @@ Select: Just the push event
 
 
 
-Step 3: Setup AWS EKS Cluster
+# Step 3: Setup AWS EKS Cluster
 bash# Create EKS cluster (if not exists)
 eksctl create cluster \
   --name my-cluster \
@@ -136,7 +136,7 @@ eksctl create cluster \
 # Configure kubectl
 aws eks update-kubeconfig --name my-cluster --region us-east-1
 
-Step 4: Install ArgoCD
+# Step 4: Install ArgoCD
 bash# Create namespace
 kubectl create namespace argocd
 
@@ -149,7 +149,7 @@ kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "LoadBalancer"}}
 # Get initial admin password
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 
-Step 5: Configure ArgoCD Application
+# Step 5: Configure ArgoCD Application
 
 Login to ArgoCD UI
 Create New Application:
@@ -165,7 +165,7 @@ Namespace: default
 
 
 
-Step 6: Install AWS ALB Ingress Controller
+# Step 6: Install AWS ALB Ingress Controller
 bash# Add Helm repo
 helm repo add eks https://aws.github.io/eks-charts
 
@@ -176,7 +176,7 @@ helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
   --set serviceAccount.create=true \
   --set serviceAccount.name=aws-load-balancer-controller
   
-Step 7: Test the Pipeline
+# Step 7: Test the Pipeline
 bash# Make a change to main.py
 echo "# Test change" >> automated-k8s-cicd/app/main.py
 
@@ -251,7 +251,7 @@ Zero-downtime deployment! ✅
 
 
 
-🧠 Pipeline Logic
+# 🧠 Pipeline Logic
 1. Smart Change Detection
 groovydef changed = sh(
     script: "git diff --name-only HEAD~1 HEAD | grep -E '^automated-k8s-cicd/app/main.py$' || true",

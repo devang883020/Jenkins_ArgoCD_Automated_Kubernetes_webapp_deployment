@@ -141,7 +141,7 @@ eksctl create cluster \
   --name my-cluster \
   --region us-east-1 \
   --nodegroup-name standard-workers \
-  --node-type t3.medium \
+  --node-type t3.small \
   --nodes 2
 
 # Configure kubectl

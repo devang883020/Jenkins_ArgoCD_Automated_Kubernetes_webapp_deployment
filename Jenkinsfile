@@ -111,16 +111,24 @@ pipeline {
                     usernameVariable: 'GIT_USER',
                     passwordVariable: 'GIT_PASS'
                 )]) {
-                    sh """
+                    sh '''
+                      # Configure git
                       git config user.name "jenkins"
                       git config user.email "jenkins@ci.local"
 
-                      git add ${GITOPS_PATH}
-                      git commit -m "ci: update image tag to ${BUILD_NUMBER}"
+                      # Ensure we're on the main branch
+                      git checkout main || git checkout -b main
 
-                      git pull --rebase https://${GIT_USER}:${GIT_PASS}@github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git main
+                      # Pull latest changes
+                      git pull https://${GIT_USER}:${GIT_PASS}@github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git main --rebase
+
+                      # Stage and commit the changes
+                      git add ${GITOPS_PATH}
+                      git commit -m "ci: update image tag to ${BUILD_NUMBER}" || echo "No changes to commit"
+
+                      # Push to remote
                       git push https://${GIT_USER}:${GIT_PASS}@github.com/devang883020/Jenkins_ArgoCD_Automated_Kubernetes_webapp_deployment.git main
-                    """
+                    '''
                 }
             }
         }
